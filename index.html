@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SecuFill Calculator</title>
+<meta name="theme-color" content="#0b1220" />
+<style>
+  :root {
+    --bg:#0b1220; --panel:#0e1726; --surface:#0a1322; --border:#1f2a3a;
+    --text:#e6edf3; --muted:#9fb0c3;
+    --accent:#22c55e; --accent-ink:#052c17; --danger:#ef4444;
+    --accent-current:#94a3b8;   /* Current Practice (slate) */
+    --accent-secu:#86efac;      /* SecuFill (light green) */
+    --strip-h: 110px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  .wrap{max-width:720px;margin:0 auto;padding:16px;padding-bottom:calc(var(--strip-h) + env(safe-area-inset-bottom,0px) + 20px)}
+  h1{font-size:clamp(1.2rem,4.5vw,1.6rem);margin:4px 0 12px}
+  .header{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .btn{padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:#101b2b;color:var(--text);font-weight:700;cursor:pointer}
+  .btn-primary{background:var(--accent);color:var(--accent-ink);border:none}
+  .grid1{display:grid;grid-template-columns:1fr;gap:12px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--surface));border:1px solid var(--border);border-radius:16px;padding:12px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+  .title{font-weight:800;margin:4px 0 8px;display:flex;align-items:center;gap:8px}
+  .tag{font-size:.75rem;font-weight:700;padding:.25rem .5rem;border-radius:999px;border:1px solid var(--border)}
+  .pane-B .title{border-left:6px solid var(--accent-current);padding-left:10px}
+  .pane-C .title{border-left:6px solid var(--accent-secu);padding-left:10px}
+  .pane-C .tag{background:var(--accent-secu);color:#052c17;border-color:var(--accent-secu)}
+  .row{display:grid;grid-template-columns:1fr;gap:6px;margin:8px 0}
+  label{color:var(--muted);font-size:.95rem}
+  input[type=number]{width:100%;padding:14px 12px;border-radius:12px;border:1px solid var(--border);background:#07101d;color:var(--text);font-size:18px;appearance:textfield}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+  .pill{background:#07101d;border:1px solid var(--border);padding:12px;border-radius:12px}
+  .pill .k{color:var(--muted);font-size:.9rem}
+  .pill .v{font-weight:800;font-size:1.1rem;margin-top:4px}
+
+  /* Bottom scrolling strip */
+  .strip{position:fixed;left:0;right:0;bottom:0;padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(11,18,32,.0),rgba(11,18,32,.75) 25%,rgba(11,18,32,.95));border-top:1px solid var(--border);backdrop-filter:blur(6px);height:var(--strip-h);display:flex;align-items:center}
+  .track{display:flex;gap:10px;overflow-x:auto;scrollbar-width:thin;padding:0 12px;scroll-snap-type:x mandatory}
+  .cardlet{flex:0 0 260px;background:#07101d;border:1px solid var(--border);border-radius:12px;padding:10px;scroll-snap-align:start}
+  .head{display:flex;align-items:center;gap:8px;font-weight:800;margin-bottom:6px}
+  .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+  .dot-current{background:var(--accent-current)}
+  .dot-secu{background:var(--accent-secu)}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .mini{background:#0a1322;border:1px solid var(--border);border-radius:8px;padding:6px;text-align:center}
+  .mini .k{font-size:.75rem;color:var(--muted)}
+  .mini .v{font-weight:800;font-size:.95rem;margin-top:2px}
+  .delta-pos{border-color:color-mix(in srgb,var(--accent) 35%, var(--border))}
+  .delta-neg{border-color:color-mix(in srgb,var(--danger) 35%, var(--border))}
+
+  @media print{.strip{position:static;height:auto;background:none;border:none}.track{overflow:visible;gap:12px}.wrap{padding-bottom:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>SecuFill Calculator</h1>
+    <div style="display:flex;gap:8px">
+      <button class="btn" id="reset">Reset</button>
+      <button class="btn btn-primary" id="pdf">Download PDF</button>
+    </div>
+  </div>
+  <div id="panes" class="grid1"></div>
+</div>
+
+<div class="strip">
+  <div class="track">
+    <div class="cardlet">
+      <div class="head"><span class="dot dot-current"></span> Current Practice</div>
+      <div class="grid3">
+        <div class="mini"><div class="k">Per Patient</div><div class="v" id="cur_pp">—</div></div>
+        <div class="mini"><div class="k">Per Day</div><div class="v" id="cur_pd">—</div></div>
+        <div class="mini"><div class="k">Per Month</div><div class="v" id="cur_pm">—</div></div>
+      </div>
+    </div>
+    <div class="cardlet">
+      <div class="head"><span class="dot dot-secu"></span> Using SecuFill</div>
+      <div class="grid3">
+        <div class="mini"><div class="k">Per Patient</div><div class="v" id="secu_pp">—</div></div>
+        <div class="mini"><div class="k">Per Day</div><div class="v" id="secu_pd">—</div></div>
+        <div class="mini"><div class="k">Per Month</div><div class="v" id="secu_pm">—</div></div>
+      </div>
+    </div>
+    <div class="cardlet" id="delta_card">
+      <div class="head">Δ Difference (Current − SecuFill)</div>
+      <div class="grid3">
+        <div class="mini" id="delta_pp_box"><div class="k">Per Patient</div><div class="v" id="delta_pp">—</div></div>
+        <div class="mini" id="delta_pd_box"><div class="k">Per Day</div><div class="v" id="delta_pd">—</div></div>
+        <div class="mini" id="delta_pm_box"><div class="k">Per Month</div><div class="v" id="delta_pm">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cfg={scenarios:[
+  {key:"B",title:"Current Practice",fields:[
+    {key:"B2",label:"Number of Patients per day",value:30},
+    {key:"B3",label:"Cost of Syringe",value:1000},
+    {key:"B4",label:"Number of Days Syringe Re-used",value:1},
+    {key:"B5",label:"Cost of Y Tube",value:300},
+    {key:"B6",label:"Number of Y Tubes used per day",value:30},
+    {key:"B7",label:"Cost of 3 Way Connector",value:50},
+    {key:"B8",label:"Number of 3 Way Connector used per day",value:30},
+    {key:"B9",label:"Number of Working days",value:30}]},
+  {key:"C",title:"Using SecuFill",fields:[
+    {key:"C2",label:"Number of Patients per day",value:30},
+    {key:"C3",label:"Cost of Syringe",value:1000},
+    {key:"C4",label:"Number of Days Syringe Re-used",value:1},
+    {key:"C5",label:"Cost of Y Tube",value:300},
+    {key:"C6",label:"Number of Y Tubes used per day",value:30},
+    {key:"C7",label:"Cost of SecuFill",value:200},
+    {key:"C8",label:"Number of SecuFill Used per day",value:30},
+    {key:"C9",label:"Number of Working days",value:30}]}
+]};
+
+const panes=document.getElementById('panes');
+const initial={};
+function cE(t,a={},ch=[]){const e=document.createElement(t);Object.entries(a).forEach(([k,v])=>{if(k==='class')e.className=v;else if(k==='text')e.textContent=v;else e.setAttribute(k,v)});ch.forEach(x=>e.appendChild(x));return e;}
+function buildPane(s){
+  const card=cE('div',{class:'card pane-'+s.key,id:'pane_'+s.key});
+  const tag=cE('span',{class:'tag',text:(s.key==='B'?'Current':'SecuFill')});
+  const title=cE('div',{class:'title'},[document.createTextNode(s.title),tag]); card.appendChild(title);
+  s.fields.forEach(f=>{const row=cE('div',{class:'row'}); const lab=cE('label',{for:f.key,text:f.label});
+    const inp=cE('input',{id:f.key,type:'number',inputmode:'numeric',pattern:'[0-9]*',value:f.value});
+    initial[f.key]=f.value; row.appendChild(lab); row.appendChild(inp); card.appendChild(row); inp.addEventListener('input',compute);});
+  const stats=cE('div',{class:'stats'});
+  stats.appendChild(cE('div',{class:'pill'},[cE('div',{class:'k',text:'Cost Per Patient'}),cE('div',{class:'v',id:'pp_'+s.key})]));
+  stats.appendChild(cE('div',{class:'pill'},[cE('div',{class:'k',text:'Cost per day'}),cE('div',{class:'v',id:'pd_'+s.key})]));
+  stats.appendChild(cE('div',{class:'pill'},[cE('div',{class:'k',text:'Cost per month'}),cE('div',{class:'v',id:'pm_'+s.key})]));
+  card.appendChild(stats); panes.appendChild(card);
+}
+cfg.scenarios.forEach(buildPane);
+
+const fmt=new Intl.NumberFormat('en-IN',{maximumFractionDigits:0});
+function n(id){const v=Number(document.getElementById(id).value);return Number.isFinite(v)?v:0;}
+function compute(){
+  const res={};
+  cfg.scenarios.forEach(s=>{
+    const S=Object.fromEntries(s.fields.map(f=>[f.key,n(f.key)]));
+    const perDay=(S[s.key+'3']/S[s.key+'4'])+(S[s.key+'5']*S[s.key+'6'])+(S[s.key+'7']*S[s.key+'8']);
+    const perPatient=perDay/S[s.key+'2'];
+    const perMonth=perDay*S[s.key+'9'];
+    res[s.key]={perDay,perPatient,perMonth};
+    document.getElementById('pp_'+s.key).textContent='₹'+fmt.format(perPatient);
+    document.getElementById('pd_'+s.key).textContent='₹'+fmt.format(perDay);
+    document.getElementById('pm_'+s.key).textContent='₹'+fmt.format(perMonth);
+  });
+  document.getElementById('cur_pp').textContent='₹'+fmt.format(res.B.perPatient);
+  document.getElementById('cur_pd').textContent='₹'+fmt.format(res.B.perDay);
+  document.getElementById('cur_pm').textContent='₹'+fmt.format(res.B.perMonth);
+  document.getElementById('secu_pp').textContent='₹'+fmt.format(res.C.perPatient);
+  document.getElementById('secu_pd').textContent='₹'+fmt.format(res.C.perDay);
+  document.getElementById('secu_pm').textContent='₹'+fmt.format(res.C.perMonth);
+  const dPP=res.B.perPatient-res.C.perPatient, dPD=res.B.perDay-res.C.perDay, dPM=res.B.perMonth-res.C.perMonth;
+  const setDelta=(box,val,delta)=>{const el=document.getElementById(box); el.classList.remove('delta-pos','delta-neg'); el.classList.add(delta>=0?'delta-pos':'delta-neg'); document.getElementById(val).textContent=(delta>=0?'▲ ':'▼ ')+'₹'+fmt.format(Math.abs(delta));};
+  setDelta('delta_pp_box','delta_pp',dPP); setDelta('delta_pd_box','delta_pd',dPD); setDelta('delta_pm_box','delta_pm',dPM);
+}
+compute();
+document.getElementById('reset').addEventListener('click',()=>{cfg.scenarios.forEach(s=>s.fields.forEach(f=>{document.getElementById(f.key).value=initial[f.key];})); compute();});
+document.getElementById('pdf').addEventListener('click',()=>window.print());
+</script>
+</body>
+</html>
